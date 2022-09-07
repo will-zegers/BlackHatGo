@@ -11,10 +11,12 @@ import (
 	"time"
 )
 
-func worker(ports, results chan uint16, host string) {
+func worker(ports, results chan uint16, host string, timeoutMs int) {
 	for port := range ports {
 		address := fmt.Sprintf("%s:%d", host, port)
-		conn, err := net.DialTimeout("tcp", address, 5*time.Second)
+		timeout := time.Duration(timeoutMs) * time.Millisecond
+
+		conn, err := net.DialTimeout("tcp", address, timeout)
 		if err != nil {
 			results <- 0
 			continue
@@ -68,6 +70,7 @@ func main() {
 	hostPtr := flag.String("host", "", "Host IP or FQDN")
 	portsPtr := flag.String("ports", "", "Single port number (eg. 80), dash-separated port range (eg. 100-200), comma-separated list of ports (53,80,443), or combination (eg. 20-23,53,80)")
 	workerCountPtr := flag.Int("workers", 100, "Number of worker threads to run")
+	timeoutPtr := flag.Int("timeout", 1000, "Timeout duration (in milliseconds)")
 	flag.Parse()
 
 	if *hostPtr == "" || *portsPtr == "" {
@@ -82,7 +85,7 @@ func main() {
 	var openports []uint16
 
 	for i := 0; i < cap(ports); i++ {
-		go worker(ports, results, *hostPtr)
+		go worker(ports, results, *hostPtr, *timeoutPtr)
 	}
 
 	go func() {
